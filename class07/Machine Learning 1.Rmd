@@ -1,0 +1,265 @@
+---
+title: "Machine Learning 1"
+author: "Katie Chau"
+date: "2/14/2022"
+output: pdf_document
+---
+
+# First up kmeans()
+
+Demo of using kmeans() function in base R. First make up some data with a known structure.  
+```{r}
+tmp <- c(rnorm(30,-3),rnorm(30,3))
+x <- cbind(x = tmp,y = rev(tmp))
+plot(x)
+```
+Now we have some made up data in 'x' let's see how kmeans works with this data. 
+
+```{r}
+k <-kmeans(x,centers = 2, nstart = 20)
+k
+```
+> Q. How many points are in each cluster? 
+
+```{r}
+k$size
+```
+>Q. How do we get to the cluster membership/assignment? 
+
+```{r}
+k$cluster
+```
+
+>Q. What about cluster centers?
+
+```{r}
+k$centers
+```
+
+Now we've got to main results, let's use thme to plot our data with the kmeans result
+
+```{r}
+plot(x,col=k$cluster)
+points(k$centers,col="blue", pch=15)
+```
+
+## Now for Hierarchial Clustering
+
+We will cluster the same data 'x' with the 'hclust()'. In this case 'hclust()' requires a distance matrix as input 
+
+```{r}
+hc <-hclust(dist(x))
+hc
+```
+
+Let's plot our hclus result
+```{r}
+plot(hc)
+```
+
+To get our cluster membershit vector we need to "cut" the tree with 'cutree()' 
+
+```{r}
+grps <- cutree(hc,h=8)
+grps
+```
+
+Now plot our data with hclust() results
+
+```{r}
+plot(x,col=grps)
+```
+
+# Principal Component Analysis (PCA)
+
+## PCA of UK Food Data
+
+Read data from website and try a few visualization 
+
+```{r}
+url <- "https://tinyurl.com/UK-foods"
+x <- read.csv(url, row.names =1)
+x
+```
+
+
+
+```{r}
+cols <-rainbow(nrow(x))
+barplot(as.matrix(x),col=cols)
+```
+
+
+```{r}
+barplot(as.matrix(x),col=cols, beside = TRUE)
+```
+
+```{r}
+pairs(x,col=cols)
+```
+
+PCA to the rescue!
+The main base R PCA  function is called 'prcomp()'and we will need to give it the transporse of our input data. 
+
+```{r}
+pca <-prcomp(t(x))
+pca
+```
+```{r}
+pca <-prcomp(t(x))
+```
+There is a nice summary of how well PCA is doing
+```{r}
+summary(pca)
+```
+
+```{r}
+attributes (pca)
+```
+
+To make our new PCA plot (aka PCA score plot) we access 'pca$x'
+```{r}
+plot(pca$x[,1],pca$x[,2])
+text(pca$x[,1],pca$x[,2],colnames(x))
+```
+Color up the plot 
+
+```{r}
+country_cols <- c("orange", "red", "blue", "green")
+plot(pca$x[,1],pca$x[,2],xlab="PC1", ylab="PC2")
+text(pca$x[,1],pca$x[,2],colnames(x), col=country_cols)
+```
+
+Calculate how much variation in the original data each PC accounts for
+```{r}
+v <- round( pca$sdev^2/sum(pca$sdev^2) * 100 )
+v
+```
+Or second row 
+```{r}
+z <- summary(pca)
+z$importance
+```
+Plot of variances(eigenvalues) with respect to the principal component number (eigenvector number)
+```{r}
+barplot(v, xlab="Principal Component", ylab="Percent Variation")
+```
+Consider the influence of each original variable upon the principal components (loading scores)
+```{r}
+par(mar=c(10, 3, 0.35, 0))
+barplot( pca$rotation[,1], las=2 )
+```
+
+>Q. Generate a similar 'loadings plot' for PC2. What two food groups feature prominately and what does PC2 mainly tell us about? 
+
+
+```{r}
+par(mar=c(10, 3, 0.35, 0))
+barplot( pca$rotation[,2], las=2 )
+```
+
+Fresh_potatoes and Soft_drinks are the two prominent groups. PC2 tells us that Soft_drinks push the other countries to the left negative side of the plot while Fresh_potatoes pushes N.Ireland to the right positive side of the plot. 
+
+Inbuilt biplot()
+
+```{r}
+biplot(pca)
+```
+
+
+
+##PCA of RNA-Seq data 
+
+Read in data from website
+```{r}
+url2 <- "https://tinyurl.com/expression-CSV"
+rna.data <- read.csv(url2, row.names=1)
+head(rna.data)
+
+```
+
+>Q How many genes are in this data set?
+
+```{r}
+pca <-prcomp(t(rna.data))
+```
+There is a nice summary of how well PCA is doing
+```{r}
+summary(pca)
+```
+
+Do our PCA plot of this RNA-seq data
+```{r}
+plot(pca$x[,1],pca$x[,2], xlab="PC1", ylab="PC2")
+```
+```{r}
+plot(pca$x[,1],pca$x[,2], xlab="PC1", ylab="PC2")
+text(pca$x[,1],pca$x[,2],colnames(rna.data))
+```
+
+Barplot summary of Proportion of Variance for each PC 
+```{r}
+plot(pca, main="Quick scree plot")
+```
+
+Make a scree plot ourselves
+
+```{r}
+## Variance captured per PC 
+pca.var <- pca$sdev^2
+
+## Percent variance is often more informative to look at 
+pca.var.per <- round(pca.var/sum(pca.var)*100, 1)
+pca.var.per
+```
+```{r}
+barplot(pca.var.per, main="Scree Plot", 
+        names.arg = paste0("PC", 1:10),
+        xlab="Principal Component", ylab="Percent Variation")
+```
+Make the PCA plot more attractive 
+```{r}
+## A vector of colors for wt and ko samples
+colvec <- colnames(rna.data)
+colvec[grep("wt", colvec)] <- "red"
+colvec[grep("ko", colvec)] <- "blue"
+
+plot(pca$x[,1], pca$x[,2], col=colvec, pch=16,
+     xlab=paste0("PC1 (", pca.var.per[1], "%)"),
+     ylab=paste0("PC2 (", pca.var.per[2], "%)"))
+
+text(pca$x[,1], pca$x[,2], labels = colnames(rna.data), pos=c(rep(4,5), rep(2,5)))
+```
+Using ggplot 
+```{r}
+library(ggplot2)
+
+df <- as.data.frame(pca$x)
+
+# Our first basic plot
+ggplot(df) + 
+  aes(PC1, PC2) + 
+  geom_point()
+```
+Add a condition specific color and labels for aesthetics
+```{r}
+df$samples <- colnames(rna.data) 
+df$condition <- substr(colnames(rna.data),1,2)
+
+p <- ggplot(df) + 
+        aes(PC1, PC2, label=samples, col=condition) + 
+        geom_label(show.legend = FALSE)
+p
+```
+
+```{r}
+p + labs(title="PCA of RNASeq Data",
+       subtitle = "PC1 clealy seperates wild-type from knock-out samples",
+       x=paste0("PC1 (", pca.var.per[1], "%)"),
+       y=paste0("PC2 (", pca.var.per[2], "%)"),
+       caption="BIMM143 example data") +
+     theme_bw()
+```
+
+
+
